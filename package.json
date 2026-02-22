@@ -1,0 +1,31 @@
+{
+  "name": "instant-publish",
+  "version": "1.0.0",
+  "description": "Turn any document into a shareable link on chillai.space",
+  "type": "module",
+  "bin": {
+    "instant-publish": "./bin/cli.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "scripts": {
+    "test": "node bin/cli.js --help"
+  },
+  "keywords": [
+    "publish",
+    "html",
+    "share",
+    "deploy",
+    "chillai"
+  ],
+  "author": "Chill AI Space",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Chill-AI-Space/instant-publish"
+  },
+  "dependencies": {
+    "commander": "^13.0.0"
+  }
+}
