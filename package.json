@@ -1,6 +1,6 @@
 {
   "name": "instant-publish",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Turn any document into a shareable link on chillai.space",
   "type": "module",
   "bin": {

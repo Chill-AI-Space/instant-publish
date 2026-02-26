@@ -99,7 +99,7 @@ function addClaudeInstructions() {
 program
   .name("instant-publish")
   .description("Turn any document into a shareable link on chillai.space")
-  .version("1.1.0");
+  .version("1.2.0");
 
 program
   .command("init")
