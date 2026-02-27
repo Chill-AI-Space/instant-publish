@@ -20,9 +20,17 @@ After this, when you ask Claude Code to create an HTML document, it will publish
 ## Usage
 
 ```bash
-# Publish a file
+# Publish a file (first time — generates a password)
 npx instant-publish deploy report.html --slug my-report
-# → Published: https://chillai.space/p/my-report
+# → Published: https://chillai.space/p/my-report?password=A1b2C3dE
+
+# Update the same page (password is preserved)
+npx instant-publish deploy report-v2.html --slug my-report
+# → Updated: https://chillai.space/p/my-report (password unchanged)
+
+# Update with a new password
+npx instant-publish deploy report-v2.html --slug my-report --new-password
+# → Published: https://chillai.space/p/my-report?password=X9y8Z7wV
 
 # List your pages
 npx instant-publish list
@@ -34,6 +42,8 @@ npx instant-publish delete my-report
 ## How it works
 
 - HTML is stored on Cloudflare R2 (edge-cached globally)
+- Pages are password-protected by default (SHA-256 hashed, never stored in plaintext)
+- Republishing preserves the password — existing links keep working
 - Pages are served at `https://chillai.space/p/<slug>`
 - API key lives in `~/.config/instant-publish/config.json`
 - No database, no accounts — just a key and your content

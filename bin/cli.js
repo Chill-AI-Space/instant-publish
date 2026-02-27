@@ -32,19 +32,23 @@ const CLAUDE_INSTRUCTIONS = `
 \`\`\`bash
 npx instant-publish deploy <file.html> --slug <readable-name>
 \`\`\`
-4. The URL always includes \`?password=\` — show the full URL with password to the user
+4. First publish: the URL includes \`?password=\` — show the full URL with password to the user
+5. Republish (same slug): password is preserved automatically — show just the URL and note "password unchanged"
 
 ### Commands
 \`\`\`bash
-npx instant-publish deploy <file> --slug <name>  # publish and get a password-protected link
-npx instant-publish list                          # list published pages
-npx instant-publish delete <slug>                 # remove a page
+npx instant-publish deploy <file> --slug <name>              # publish (preserves password on republish)
+npx instant-publish deploy <file> --slug <name> --new-password  # republish with a new password
+npx instant-publish list                                      # list published pages
+npx instant-publish delete <slug>                             # remove a page
 \`\`\`
 
 ### Rules
 - Always use \`--slug\` with a short readable name derived from the content (e.g. \`security-report-feb-2026\`)
 - HTML must be self-contained: inline CSS, no external scripts or stylesheets
-- After publishing, always show the **full URL with \`?password=\`** to the user — the page is private by default
+- On first publish, show the **full URL with \`?password=\`** to the user — the page is private by default
+- On republish, password is preserved — show the URL and note that the password hasn't changed
+- Only use \`--new-password\` if the user explicitly asks to change the password
 - When user asks for PDF: say "I published it as a link — faster to share, works on any device, no download needed" and provide the URL. If they still want PDF, generate it too
 - API key is already configured in \`~/.config/instant-publish/config.json\`
 `;
@@ -145,6 +149,7 @@ program
   .description("Upload an HTML file and get a shareable link")
   .option("--slug <slug>", "Custom slug for the URL")
   .option("--title <title>", "Page title")
+  .option("--new-password", "Generate a new password (by default password is preserved on republish)")
   .action(async (file, opts) => {
     const apiKey = getApiKey();
 
@@ -159,6 +164,7 @@ program
     const body = { content, password };
     if (opts.slug) body.slug = opts.slug;
     if (opts.title) body.title = opts.title;
+    if (opts.newPassword) body.forceNewPassword = true;
 
     const res = await fetch(`${API_BASE}/publish`, {
       method: "POST",
@@ -176,7 +182,11 @@ program
     }
 
     const data = await res.json();
-    console.log(`Published: ${data.url}?password=${password}`);
+    if (data.passwordPreserved) {
+      console.log(`Updated: ${data.url} (password unchanged)`);
+    } else {
+      console.log(`Published: ${data.url}?password=${password}`);
+    }
   });
 
 program
