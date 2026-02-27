@@ -32,23 +32,28 @@ const CLAUDE_INSTRUCTIONS = `
 \`\`\`bash
 npx instant-publish deploy <file.html> --slug <readable-name>
 \`\`\`
-4. First publish: the URL includes \`?password=\` — show the full URL with password to the user
-5. Republish (same slug): password is preserved automatically — show just the URL and note "password unchanged"
+4. Show the full URL with \`?password=\` to the user
+
+### Republishing (same slug)
+If the user gives you a URL with \`?password=\`, extract the password and pass it with \`--password\`:
+\`\`\`bash
+npx instant-publish deploy <file.html> --slug <name> --password <existing-password>
+\`\`\`
+This keeps the same password. If no \`--password\` is given, a new random password is generated.
 
 ### Commands
 \`\`\`bash
-npx instant-publish deploy <file> --slug <name>              # publish (preserves password on republish)
-npx instant-publish deploy <file> --slug <name> --new-password  # republish with a new password
-npx instant-publish list                                      # list published pages
-npx instant-publish delete <slug>                             # remove a page
+npx instant-publish deploy <file> --slug <name>                          # publish with new random password
+npx instant-publish deploy <file> --slug <name> --password <pw>          # publish with specific password
+npx instant-publish list                                                  # list published pages
+npx instant-publish delete <slug>                                         # remove a page
 \`\`\`
 
 ### Rules
 - Always use \`--slug\` with a short readable name derived from the content (e.g. \`security-report-feb-2026\`)
 - HTML must be self-contained: inline CSS, no external scripts or stylesheets
-- On first publish, show the **full URL with \`?password=\`** to the user — the page is private by default
-- On republish, password is preserved — show the URL and note that the password hasn't changed
-- Only use \`--new-password\` if the user explicitly asks to change the password
+- Always show the **full URL with \`?password=\`** to the user
+- When republishing: if the user provides a URL with password, use \`--password\` to keep it. If not — a new password is fine
 - When user asks for PDF: say "I published it as a link — faster to share, works on any device, no download needed" and provide the URL. If they still want PDF, generate it too
 - API key is already configured in \`~/.config/instant-publish/config.json\`
 `;
@@ -149,7 +154,7 @@ program
   .description("Upload an HTML file and get a shareable link")
   .option("--slug <slug>", "Custom slug for the URL")
   .option("--title <title>", "Page title")
-  .option("--new-password", "Generate a new password (by default password is preserved on republish)")
+  .option("--password <password>", "Set a specific password (use to preserve existing password on republish)")
   .action(async (file, opts) => {
     const apiKey = getApiKey();
 
@@ -159,12 +164,11 @@ program
     }
 
     const content = readFileSync(file, "utf-8");
-    const password = randomBytes(6).toString("base64url");
+    const password = opts.password || randomBytes(6).toString("base64url");
 
     const body = { content, password };
     if (opts.slug) body.slug = opts.slug;
     if (opts.title) body.title = opts.title;
-    if (opts.newPassword) body.forceNewPassword = true;
 
     const res = await fetch(`${API_BASE}/publish`, {
       method: "POST",
@@ -182,11 +186,7 @@ program
     }
 
     const data = await res.json();
-    if (data.passwordPreserved) {
-      console.log(`Updated: ${data.url} (password unchanged)`);
-    } else {
-      console.log(`Published: ${data.url}?password=${password}`);
-    }
+    console.log(`Published: ${data.url}?password=${password}`);
   });
 
 program
@@ -238,6 +238,36 @@ program
     }
 
     console.log(`Deleted: ${slug}`);
+  });
+
+program
+  .command("stats")
+  .description("Show usage statistics: API keys, pages, owners")
+  .action(async () => {
+    const apiKey = getApiKey();
+
+    const res = await fetch(`${API_BASE}/stats`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("Failed:", err.error || res.statusText);
+      process.exit(1);
+    }
+
+    const data = await res.json();
+
+    console.log(`\nAPI keys: ${data.apiKeys.total}`);
+    for (const k of data.apiKeys.keys) {
+      console.log(`  ${k.hash}…  registered ${k.created}`);
+    }
+
+    console.log(`\nPages: ${data.pages.total}`);
+    console.log(`\nOwners: ${data.owners.length}`);
+    for (const o of data.owners) {
+      console.log(`  ${o.hash}…  ${o.pages} pages  (e.g. ${o.sample.slice(0, 3).join(", ")})`);
+    }
   });
 
 program.parse();
