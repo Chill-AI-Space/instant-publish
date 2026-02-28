@@ -9,8 +9,9 @@ import {
   existsSync,
 } from "fs";
 import { join } from "path";
-import { homedir } from "os";
+import { homedir, platform } from "os";
 import { randomBytes } from "crypto";
+import { exec } from "child_process";
 
 const API_BASE = "https://chillai.space/api";
 const CONFIG_DIR = join(homedir(), ".config", "instant-publish");
@@ -47,6 +48,7 @@ npx instant-publish deploy <file> --slug <name>                          # publi
 npx instant-publish deploy <file> --slug <name> --password <pw>          # publish with specific password
 npx instant-publish list                                                  # list published pages
 npx instant-publish delete <slug>                                         # remove a page
+npx instant-publish portal                                                # open portal in browser
 \`\`\`
 
 ### Rules
@@ -108,7 +110,7 @@ function addClaudeInstructions() {
 program
   .name("instant-publish")
   .description("Turn any document into a shareable link on chillai.space")
-  .version("1.2.0");
+  .version("1.3.0");
 
 program
   .command("init")
@@ -268,6 +270,25 @@ program
     for (const o of data.owners) {
       console.log(`  ${o.hash}…  ${o.pages} pages  (e.g. ${o.sample.slice(0, 3).join(", ")})`);
     }
+  });
+
+program
+  .command("portal")
+  .description("Open the portal page in your browser to browse all published pages")
+  .action(() => {
+    const apiKey = getApiKey();
+    const url = `https://chillai.space/portal?key=${apiKey}`;
+    const masked = apiKey.slice(0, 4) + "***" + apiKey.slice(-4);
+    console.log(`Opening portal (key: ${masked})...`);
+
+    const os = platform();
+    const cmd = os === "darwin" ? "open" : os === "win32" ? "start" : "xdg-open";
+    exec(`${cmd} "${url}"`, (err) => {
+      if (err) {
+        console.error("Could not open browser. Visit manually:");
+        console.log(url);
+      }
+    });
   });
 
 program.parse();
