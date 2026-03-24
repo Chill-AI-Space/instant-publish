@@ -1,8 +1,18 @@
 # instant-publish
 
-Turn any HTML document into a shareable link on [chillai.space](https://chillai.space).
+Turn any document into a shareable link on [chillai.space](https://chillai.space).
 
 Your AI generates a report, a page, a document — `instant-publish` gives it a permanent URL in one command. No hosting setup, no deploy pipeline. Just a link.
+
+## Supported formats
+
+| Format | Browser | AI access (`?raw`) |
+|--------|---------|-------------------|
+| `.md` / `.markdown` | Rendered as clean HTML with GitHub-style typography | Raw markdown |
+| `.txt` | Monospace text | Raw text |
+| `.html` | Served as-is | — |
+
+**Markdown is the recommended format** for text-heavy content. AI agents can access the raw source instantly via `?raw` — no HTML parsing needed.
 
 ## Setup
 
@@ -15,36 +25,51 @@ This does three things:
 2. Registers it with `chillai.space`
 3. Adds instructions to Claude Code so it knows how to publish automatically
 
-After this, when you ask Claude Code to create an HTML document, it will publish it via instant-publish and give you the link.
-
 ## Usage
 
 ```bash
-# Publish a file (first time — generates a password)
-npx instant-publish deploy report.html --slug my-report
-# → Published: https://chillai.space/p/my-report?password=A1b2C3dE
+# Publish markdown (recommended)
+npx instant-publish deploy report.md --slug quarterly-report
+# → Published: https://chillai.space/p/quarterly-report?password=A1b2C3dE
+# → Raw (for AI): https://chillai.space/p/quarterly-report?password=A1b2C3dE&raw
 
-# Update the same page (password is preserved)
-npx instant-publish deploy report-v2.html --slug my-report
-# → Updated: https://chillai.space/p/my-report (password unchanged)
+# Publish HTML (self-contained, inline CSS)
+npx instant-publish deploy page.html --slug landing-page
 
-# Update with a new password
-npx instant-publish deploy report-v2.html --slug my-report --new-password
-# → Published: https://chillai.space/p/my-report?password=X9y8Z7wV
+# Publish plain text
+npx instant-publish deploy notes.txt --slug meeting-notes
+
+# Republish (preserves password)
+npx instant-publish deploy report-v2.md --slug quarterly-report --password A1b2C3dE
 
 # List your pages
 npx instant-publish list
 
 # Delete a page
-npx instant-publish delete my-report
+npx instant-publish delete quarterly-report
+
+# Open portal — admin dashboard to browse, preview, and manage all your pages
+npx instant-publish portal
 ```
+
+## Raw access for AI agents
+
+When you publish `.md` or `.txt` files, the raw source is stored alongside the rendered HTML. AI agents can read it by appending `&raw` to the URL:
+
+```
+https://chillai.space/p/my-doc?password=xxx&raw
+```
+
+This returns plain `text/markdown` or `text/plain` — no HTML wrapper, no parsing needed. Content negotiation also works: requests with `Accept: text/markdown` or `Accept: text/plain` headers get raw source automatically.
 
 ## How it works
 
-- HTML is stored on Cloudflare R2 (edge-cached globally)
-- Pages are password-protected by default (SHA-256 hashed, never stored in plaintext)
+- Content is stored on Cloudflare R2 (edge-cached globally)
+- Pages are password-protected by default (SHA-256 hashed)
+- Markdown is rendered to HTML at deploy time (via `marked`), raw source stored separately
 - Republishing preserves the password — existing links keep working
 - Pages are served at `https://chillai.space/p/<slug>`
+- **Portal** at `https://chillai.space/portal?key=YOUR_API_KEY` — admin dashboard to browse, preview, and manage all your published pages
 - API key lives in `~/.config/instant-publish/config.json`
 - No database, no accounts — just a key and your content
 
